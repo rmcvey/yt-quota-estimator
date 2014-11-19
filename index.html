@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Calculator</title>
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+</head>
+<body>
+  <div class="container">
+    <h1>YouTube API Cost Calculator</h1><hr />
+    <form>
+      <div id="error" class="alert alert-danger" style="display:none; "></div>
+      <label>Enter YouTube API URL</label>
+      <small>e.g. https://www.googleapis.com/youtube/v3/videos?part=status,statistics,topicDetails,fileDetails</small>
+      <input type="text" name="url" placeholder="Enter YouTube API URL" class="form-control" value="" id="api-url" /> <br />
+      <label>Select a method</label>
+      <select class="form-control" id="request-method">
+        <option disabled>Enter a URL</option>
+      </select><br />
+    </form>
+    <br />
+    <div id="cost">
+      <strong>Cost: <span id="cost-value">0</span></strong>
+    </div>
+  </div>
+  <script>
+    var resources = {
+      'activities': {
+        'methods': {
+          'list': 0,
+          'insert': 50
+        },
+        'parts': {
+          'snippet': 2,
+          'contentDetails': 2
+        }
+      },
+    'channels': {
+        'methods': {
+          'list': 0,
+          'update': 50
+        },
+        'parts': {
+          'snippet': 2,
+          'brandingSettings': 2,
+          'contentDetails': 2,
+          'invideoPromotion': 2,
+          'statistics': 2,
+          'status': 2,
+          'topicDetails': 2
+        }
+      },
+    'channelBanners': {
+        'methods': {
+          'insert': 50
+        },
+        'noParts': true
+      },
+    'guideCategories': {
+        'methods': {
+          'list': 0,
+        },
+        'parts': {
+          'snippet': 2,
+        }
+      },
+    'playlistItems': {
+        'methods': {
+          'list': 0,
+          'insert': 50,
+          'update': 50,
+          'delete': 50
+        },
+        'noPartMethods': ['delete'],
+        'parts': {
+          'snippet': 2,
+          'contentDetails': 2,
+          'status': 2
+        }
+      },
+    'playlists': {
+        'methods': {
+          'list': 0,
+          'insert': 50,
+          'update': 50,
+          'delete': 50
+        },
+        'noPartMethods': ['delete'],
+        'parts': {
+          'snippet': 2,
+          'status': 2,
+          'contentDetails': 2,
+          'player': 0
+        }
+      },
+    'search': {
+        'methods': {
+          'list': 0
+        },
+        'parts': {
+          'snippet': 99
+        }
+      },
+    'subscriptions': {
+        'methods': {
+          'list': 0,
+          'insert': 50,
+          'delete': 50
+        },
+        'noPartMethods': ['delete'],
+        'parts': {
+          'snippet': 2,
+          'contentDetails': 2,
+          'subscriberSnippet': 2,
+        }
+      },
+      'thumbnails': {
+        'methods': {
+          'set': 50,
+        },
+        'noParts': true
+      },
+      'videoCategories': {
+        'methods': {
+          'list': 0,
+        },
+        'parts': {
+          'snippet': 2
+        }
+      },
+      'videos': {
+        'methods': {
+          'list': 0,
+          'insert': 1600,
+          'update': 50,
+          'delete': 50,
+          'rate': 50,
+          'getRating': 0
+        },
+        'noPartMethods': ['delete', 'getRating', 'rate'],
+        'parts': {
+          'snippet': 2,
+          'contentDetails': 2,
+          'status': 2,
+          'statistics': 2,
+          'player': 0,
+          'topicDetails': 2,
+          'recordingDetails': 2,
+          'fileDetails': 1,
+          'processingDetails': 1,
+          'suggestions': 1,
+        }
+      }
+    };
+
+    document.querySelector('#api-url').onchange = function(e){
+      var error        = document.querySelector('#error');
+      var select       = document.querySelector('#request-method');
+      var request_type = select.value;
+      var url          = document.querySelector('#api-url').value;
+      var parts        = url.match(/part=(.*)&?/).pop().split(',');
+      var endpoint     = url.split('/').pop().replace(/\?(.*)?/, '');
+      var costItems    = resources[endpoint] || {};
+      var methods      = costItems.methods;
+
+      error.style.display = 'none';
+      if(!methods){
+        error.textContent = 'Invalid URL, endpoint ('+endpoint.replace(/[^A-Za-z0-9\.]/g)+') not recognized';
+        error.style.display = 'block';
+        return;
+      }
+
+      // reset select box
+      select.innerHTML = '';
+
+      for(var k in methods){
+        var opt   = document.createElement('option');
+        var m     = methods[k];
+        opt.value = m;
+        opt.textContent = k;
+        select.appendChild(opt);
+      }
+
+      var changeHandler = function(e){
+        var total = parseInt(this.value) + 1;
+
+        parts.forEach(function(part){
+          total += part in costItems.parts ? costItems.parts[part] : 0;
+        });
+
+        document.querySelector('#cost-value').textContent = total;
+      };
+
+      select.removeEventListener('change', changeHandler, false);
+      select.addEventListener('change', changeHandler, false);
+    }
+  </script>
+</body>
+</html>
