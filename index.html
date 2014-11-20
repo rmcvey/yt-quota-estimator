@@ -2,29 +2,50 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Calculator</title>
+  <title>YouTube Data API Cost Calculator</title>
   <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+  <meta name="description" content="Paste in a YouTube API url to see what the cost will be" />
+  <meta name="keywords" content="YouTube API cost,YouTube API,API quota cost,api cost calculator,youtube api cost calculator,google api cost calculator" />
+  <style>
+    body{background-color: #F1F1F1;}
+    h1{ margin-left: 5px; font-weight:400; margin-bottom: 0;}
+    .red{ color: #000;}
+    td:not(:first-child){ text-align: right; font-weight: bold; }
+  </style>
 </head>
 <body>
   <div class="container">
-    <h1>YouTube API Cost Calculator</h1><hr />
-    <form>
-      <div id="error" class="alert alert-danger" style="display:none; "></div>
-      <label>Enter YouTube API URL</label>
-      <small>e.g. https://www.googleapis.com/youtube/v3/videos?part=status,statistics,topicDetails,fileDetails</small>
-      <input type="text" name="url" placeholder="Enter YouTube API URL" class="form-control" value="" id="api-url" /> <br />
-      <label>Select a method</label>
-      <select class="form-control" id="request-method">
-        <option disabled>Enter a URL</option>
-      </select><br />
-    </form>
-    <br />
-    <div id="cost">
-      <strong>Cost: <span id="cost-value">0</span></strong>
+    <header>
+      <h1><span class="red">YouTube</span> Data API Cost Calculator</h1><hr />
+    </header>
+    <div class="row">
+      <div class="col-md-9">
+        <div id="error" class="alert alert-danger" style="display:none; "></div>
+        <label>Enter <span class="red">YouTube</span> API URL</label>
+        <small>e.g. https://www.googleapis.com/youtube/v3/videos?part=status,statistics,topicDetails,fileDetails</small>
+        <input type="text" name="url" placeholder="Enter YouTube API URL" class="form-control" value="" id="api-url" /> <br />
+        <label>Select a method</label>
+        <select class="form-control" id="request-method">
+          <option disabled>Enter a URL</option>
+        </select><br />
+      </div>
+      <br />
+      <div id="cost" class="alert alert-success col-md-3">
+        <table class="table">
+          <tbody></tbody>
+          <caption>Cost values are in points</caption>
+        </table><hr />
+        <h3>Total Cost: <span class="pull-right" id="cost-value">0</span></h3>
+      </div>
+      <div class="clearfix"></div>
     </div>
+    <footer class="footer">
+      <p class="muted">Point conversions are from: <a href="https://developers.google.com/youtube/v3/determine_quota_cost">here</a>.</p>
+    </footer>
   </div>
   <script>
-    var resources = {
+    (function(window, document){
+      var resources = {
       'activities': {
         'methods': {
           'list': 0,
@@ -35,7 +56,7 @@
           'contentDetails': 2
         }
       },
-    'channels': {
+      'channels': {
         'methods': {
           'list': 0,
           'update': 50
@@ -50,13 +71,13 @@
           'topicDetails': 2
         }
       },
-    'channelBanners': {
+      'channelBanners': {
         'methods': {
           'insert': 50
         },
         'noParts': true
       },
-    'guideCategories': {
+      'guideCategories': {
         'methods': {
           'list': 0,
         },
@@ -64,7 +85,7 @@
           'snippet': 2,
         }
       },
-    'playlistItems': {
+      'playlistItems': {
         'methods': {
           'list': 0,
           'insert': 50,
@@ -78,7 +99,7 @@
           'status': 2
         }
       },
-    'playlists': {
+      'playlists': {
         'methods': {
           'list': 0,
           'insert': 50,
@@ -93,7 +114,7 @@
           'player': 0
         }
       },
-    'search': {
+      'search': {
         'methods': {
           'list': 0
         },
@@ -101,7 +122,7 @@
           'snippet': 99
         }
       },
-    'subscriptions': {
+      'subscriptions': {
         'methods': {
           'list': 0,
           'insert': 50,
@@ -150,50 +171,145 @@
           'processingDetails': 1,
           'suggestions': 1,
         }
-      }
-    };
+      }};
 
-    document.querySelector('#api-url').onchange = function(e){
-      var error        = document.querySelector('#error');
-      var select       = document.querySelector('#request-method');
-      var request_type = select.value;
-      var url          = document.querySelector('#api-url').value;
-      var parts        = url.match(/part=(.*)&?/).pop().split(',');
-      var endpoint     = url.split('/').pop().replace(/\?(.*)?/, '');
-      var costItems    = resources[endpoint] || {};
-      var methods      = costItems.methods;
-
-      error.style.display = 'none';
-      if(!methods){
-        error.textContent = 'Invalid URL, endpoint ('+endpoint.replace(/[^A-Za-z0-9\.]/g)+') not recognized';
-        error.style.display = 'block';
-        return;
-      }
-
-      // reset select box
-      select.innerHTML = '';
-
-      for(var k in methods){
-        var opt   = document.createElement('option');
-        var m     = methods[k];
-        opt.value = m;
-        opt.textContent = k;
-        select.appendChild(opt);
-      }
-
-      var changeHandler = function(e){
-        var total = parseInt(this.value) + 1;
-
-        parts.forEach(function(part){
-          total += part in costItems.parts ? costItems.parts[part] : 0;
-        });
-
-        document.querySelector('#cost-value').textContent = total;
+      /**
+       * Turns link string into a DOM node with location properties
+       * @param  {string} href the url you want to parse
+       * @return {Node}   anchor element with location info (pathname, hostname, search, etc.)
+       */
+      var parseURL = function(href){
+        var a = document.createElement('a');
+        a.href = href;
+        return a;
       };
 
-      select.removeEventListener('change', changeHandler, false);
-      select.addEventListener('change', changeHandler, false);
-    }
+      var getPartsParameter = function(search){
+        return search.match(/part=(.*)&?/).pop().split(',') || [];
+      };
+
+      var getURLMethod = function(url){
+        url = typeof url === 'string' ? parseURL(url) : url;
+        return url.pathname.split('/').pop().replace(/\?(.*)?/, '');
+      };
+
+      var getURLCost = function(href, apiMethod){
+        var url          = parseURL(href);
+        var parts        = getPartsParameter(url.search);
+        var endpoint     = getURLMethod(url);
+        var costItems    = resources[endpoint] || {};
+        var methods      = costItems.methods;
+        var response     = { total: (methods[apiMethod] + 1), parts: {}, errors: [] };
+
+        parts.forEach(function(part){
+          if(part in costItems.parts){
+            var itemCost         = costItems.parts[part];
+            response.total      += itemCost;
+            response.parts[part] = itemCost;
+          } else {
+            response.errors.push('Part "'+ part + '" is not a valid option for this endpoint, item not included in cost');
+          }
+        });
+
+        return response;
+      };
+
+      var textChangeHandler = function(e){
+        var error        = document.querySelector('#error');
+        var select       = document.querySelector('#request-method');
+        var fragment     = document.createDocumentFragment();
+        var url          = document.querySelector('#api-url').value;
+        var apiMethod    = getURLMethod(url);
+        var costItems    = resources[apiMethod] || {};
+        var methods      = costItems.methods;
+        var request_type = select.value;
+
+        error.style.display = 'none';
+        // early exit, a valid endpoint wasn't supplied
+        if(!methods){
+          error.textContent = 'Invalid URL, API method (' + apiMethod.replace(/[^\w]+/g, '') + ') not recognized';
+          error.style.display = 'block';
+          return;
+        }
+
+        // reset select box
+        select.innerHTML = '';
+        var defaultOption   = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select a method';
+        defaultOption.selected = true;
+        fragment.appendChild(defaultOption);
+        // add the methods for the given endpoint to the select list
+        for(var k in methods){
+          var opt   = document.createElement('option');
+          var m     = methods[k];
+          opt.value = m;
+          opt.textContent = k;
+          fragment.appendChild(opt);
+        }
+
+        select.appendChild(fragment);
+
+        // calculate cost
+        var selectChangeHandler = function(e){
+          if(!this.value){
+            return false;
+          }
+          
+          var costBox  = document.querySelector('#cost');
+          var table    = costBox.querySelector('table tbody');
+          var costVal  = costBox.querySelector('#cost-value');
+          var mName    = this.options[this.selectedIndex].textContent;
+          var cost     = getURLCost(url, mName);
+
+          // changeHandler has to append numerous rows at different points, keep it DRY
+          var insertRow = function(key, value){
+            var row     = this.insertRow(this.rows.length);
+            var keyCell = row.insertCell(0);
+            var valCell = row.insertCell(1);
+
+            keyCell.appendChild(document.createTextNode(key));
+            valCell.appendChild(document.createTextNode(value));
+
+            this.appendChild(row);
+            return row;
+          }.bind(table);
+          
+          // empty the table
+          table.innerHTML = '';
+          insertRow('API Request', 1);
+          insertRow('Method: '+mName, this.value);
+
+          for(var costItem in cost.parts){
+            var itemCost = cost.parts[costItem];
+            insertRow('Part: '+costItem, itemCost);
+          }
+
+          if(cost.errors.length){
+            error.innerHTML = '<ul><li>'+ cost.errors.join('</li><li>') + '</li></ul>';
+            error.style.display = 'block';
+          }
+
+          costVal.textContent = cost.total;
+        };
+
+        select.removeEventListener('change', selectChangeHandler, false);
+        select.addEventListener('change', selectChangeHandler, false);
+      };
+
+      var input = document.querySelector('#api-url');
+
+      input.addEventListener('blur', textChangeHandler, false);
+    })(window, document, undefined);
+  </script>
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-15910553-3', 'auto');
+    ga('send', 'pageview');
   </script>
 </body>
 </html>
